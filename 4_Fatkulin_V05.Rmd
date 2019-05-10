@@ -1,0 +1,75 @@
+---
+title: "4"
+output:
+  html_document:
+    df_print: paged
+  html_notebook: default
+  pdf_document: default
+  word_document: default
+---
+
+
+Построить модели линейной регрессии с указанными Y и X. Рассмотреть модели с категориальными предикторами, включая их взаимодействие с непрерывными объясняющеми переменными. Сгенерировать отчёт по структуре отчёта из практики. Включить в отчёт выводы по каждому из разделов (описание данных, модели, сравнение с kNN). Ответить на вопрос, пригодна ли построенная модель регрессии для прогнозирования и почему.
+
+```{r}
+# загрузка пакетов
+library('GGally')       # графики совместного разброса переменных
+library('lmtest')       # тесты остатков регрессионных моделей
+library('FNN')          # алгоритм kNN
+library('ISLR')    
+# константы
+my.seed <- 12345
+train.percent <- 0.85
+head(Auto)
+str(Auto)
+# преобразуем категориальные переменные в факторы
+Auto$cylinders <- as.factor(Auto$cylinders)
+#оставляем только необходимые данные 
+df.auto <- data.frame(Auto$mpg,Auto$weight,Auto$displacement,Auto$horsepower,Auto$cylinders)
+colnames(df.auto) <- c("mpg","weight","displacement","horsepower","cylinders")
+str(df.auto)
+
+# обучающая выборка
+set.seed(my.seed)
+inTrain <- sample(seq_along(df.auto$mpg), 
+                  nrow(df.auto) * train.percent)
+df.train <- Auto[inTrain, c(colnames(df.auto)[-1], colnames(df.auto)[1])]
+df.test <- Auto[-inTrain, -1]
+# описательные статистики по переменным
+summary(df.train)
+
+# совместный график разброса переменных
+ggp <- ggpairs(df.train)
+print(ggp, progress = F)
+
+
+```
+
+Судя по графику с ростом параметров mpg снижается 
+
+
+## Модели  
+```{r}
+model.1 <- lm(mpg ~ . + weight:cylinders+displacement:cylinders+horsepower:cylinders,
+              data = df.train)
+summary(model.1)
+```
+Исключаем недостаточные для построения модели влияния параметров: displacement:cylinders, horsepower:cylinders
+стоит отметить, что логически вид цилиндра должен оказывать влияние на лошадиные силы, но недостаточность данных мешает принять такую модель. Уже на этом этапе точность модели сильно падает.
+```{r}
+model.1 <- lm(mpg ~ . + weight:cylinders,
+              data = df.train)
+summary(model.1)
+```
+
+исключаем наименее значимый параметр displacement
+```{r}
+model.1 <- lm(mpg ~ weight+horsepower + weight:cylinders,
+              data = df.train)
+summary(model.1)
+```
+Конечная модель показывает достаточно неплохие критерии значимости. Скорее всего стоит остановится на ней.
+
+#Вывод
+Несмотря на значимость коэфициентов модели, на этапе анализа были упущены очевидно влияющие факторы. Такая модель может использоваться для прогноза, но результаты будут недостаточно точны и может возрастать ошибка при определенных значениях факторной переменной.
+
